@@ -1,6 +1,12 @@
 
 import * as THREE from 'three';
 
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+let renderer = new THREE.WebGLRenderer();
+let offset = 0.01;
+let camY = 40;
+
 window.addEventListener("load", () => {
     /*const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
@@ -25,15 +31,29 @@ window.addEventListener("load", () => {
             ctx.fillRect(i, j, 1, 1);
         }
     }*/
+    
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
+    // Step 4: Render the Scene
+    function animate() {
+
+        requestAnimationFrame(animate);
+      renderTerrain(offset);
+      renderer.render(scene, camera);
+      offset += 1;
+    }
+    animate();
+}); 
+
+function renderTerrain(offset){
+    while(scene.children.length > 0){ 
+        scene.remove(scene.children[0]); 
+    }
+
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     // Step 3: Create the Grid of Points and Lines
-    const gridSize = 50;
+    const gridSize = 70;
     const gap = 1;
 
     const points = [];
@@ -47,7 +67,7 @@ window.addEventListener("load", () => {
         let freq = 1; let amp = 1;
         for(let idx = 0; idx < 20; idx++)
         {
-            val += perlin((gridSize - i) * freq/100, j * freq/100) * amp;
+            val += perlin((i + offset) * freq/100, (j + offset) * freq/100) * amp;
             freq *= 2; amp /= 2;
 
         }
@@ -72,26 +92,29 @@ window.addEventListener("load", () => {
     }
 
     // Create a points material
-    const pointsMaterial = new THREE.PointsMaterial({ color: 0xff0000, size: 0.1 });
+    const pointsMaterial = new THREE.PointsMaterial({ color: 0xff0f00, size: 0.1 });
     const pointsGeometry = new THREE.BufferGeometry().setFromPoints(points);
     const pointsMesh = new THREE.Points(pointsGeometry, pointsMaterial);
     scene.add(pointsMesh);
 
     // Create a line material
-    const linesMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+    const linesMaterial = new THREE.LineBasicMaterial({ color: 0x746383 });
     const linesGeometry = new THREE.BufferGeometry().setFromPoints(lineVertices);
     const linesMesh = new THREE.LineSegments(linesGeometry, linesMaterial);
     scene.add(linesMesh);
 
-    camera.position.z = 45;
-    camera.position.y = 30;
+    camera.position.z = 90;
+    camera.position.y = camY;
     camera.rotation.x = -Math.PI / 6;
+    renderer.render(scene, camera);
 
-    // Step 4: Render the Scene
-    function animate() {
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
+}
+
+document.addEventListener("keydown", (e) => {
+    if(e.key == "w"){
+        camY += 5;
     }
-    animate();
-}); 
-
+    else  if(e.key == "s"){
+        camY -= 5;
+    }
+})
