@@ -1,78 +1,8 @@
 
-
-function randomGradient(ix, iy) {
-    const w = 32; // 32-bit unsigned integer size
-    const s = w / 2;
-
-    let a = ix >>> 0; // ensure unsigned 32-bit integer
-    let b = iy >>> 0; // ensure unsigned 32-bit integer
-
-    a = (a * 3284157443) >>> 0;
-
-    b ^= ((a << s) | (a >>> (w - s))) >>> 0;
-    b = (b * 1911520717) >>> 0;
-
-    a ^= ((b << s) | (b >>> (w - s))) >>> 0;
-    a = (a * 2048419325) >>> 0;
-
-    let random = a * (Math.PI / ~(~0 >>> 1)); // equivalent to a * (Math.PI / 2147483647)
-
-    // Create the vector from the angle
-    let v = {
-        x: Math.sin(random),
-        y: Math.cos(random)
-    };
-
-    return v;
-}
-
-
-function randomGradientForCorner(ix, iy, x, y)
-{
-    // Computing the random gradients for the corner using a hashing function
-    let gradient = randomGradient(ix, iy);
-    // Distance Vectors
-    let dx = x - ix;
-    let dy = y - iy;
-    // Return dot product
-    return (dx * gradient.x + dy * gradient.y);    
-}
-
-function interpolate(a0, a1, w)
-{
-    return (a1 - a0) * (3.0 - w * 2.0) * w * w + a0;
-}
-
-function perlin(x, y) //Float x, Float Y representing coordinates of every point in the canvas 
-{   
-    // Grid intersection points are ints
-    let x0 = Math.trunc(x);
-    let y0 = Math.trunc(y);
-    let x1 = x0 + 1;
-    let y1 = y0 + 1;
-
-    //Interpolation Weights
-    let sx = x - x0;
-    let sy = y - y0;
-
-    let n0 = randomGradientForCorner(x0, y0, x, y);
-    let n1 = randomGradientForCorner(x1, y0, x, y);
-    let ix0 = interpolate(n0, n1, sx);
- 
-    // Compute and interpolate bottom two corners
-    n0 = randomGradientForCorner(x0, y1, x, y);
-    n1 = randomGradientForCorner(x1, y1, x, y);
-    let ix1 = interpolate(n0, n1, sx);
- 
-    // Final step: interpolate between the two previously interpolated values, now in y
-    let value = interpolate(ix0, ix1, sy);
-    
-    return value;
-}
-
+import * as THREE from 'three';
 
 window.addEventListener("load", () => {
-    const canvas = document.getElementById("canvas");
+    /*const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     canvas.height = 900; canvas.width = 900;
     for(let i = 0; i < canvas.height; i++)
@@ -94,5 +24,74 @@ window.addEventListener("load", () => {
             ctx.fillStyle = `rgba(${color}, ${color}, ${color}, 255)`;
             ctx.fillRect(i, j, 1, 1);
         }
+    }*/
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Step 3: Create the Grid of Points and Lines
+    const gridSize = 50;
+    const gap = 1;
+
+    const points = [];
+    const lineVertices = [];
+
+
+    // Create points
+    for (let i = 0; i <= gridSize; i++) {
+      for (let j = 0; j <= gridSize; j++) {
+        let val = 0;
+        let freq = 1; let amp = 1;
+        for(let idx = 0; idx < 20; idx++)
+        {
+            val += perlin((gridSize - i) * freq/100, j * freq/100) * amp;
+            freq *= 2; amp /= 2;
+
+        }
+        // - gridSize to bring to center
+        const x = (i - gridSize / 2 ) * gap;
+        const z = (j - gridSize / 2 ) * gap;
+        points.push(new THREE.Vector3(x, (val * 40), z));
+      }
     }
+
+    // Create lines between adjacent points
+    for (let i = 0; i <= gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        // Horizontal lines
+        lineVertices.push(points[i * (gridSize + 1) + j]);
+        lineVertices.push(points[i * (gridSize + 1) + j + 1]);
+
+        // Vertical lines
+        lineVertices.push(points[j * (gridSize + 1) + i]);
+        lineVertices.push(points[(j + 1) * (gridSize + 1) + i]);
+      }
+    }
+
+    // Create a points material
+    const pointsMaterial = new THREE.PointsMaterial({ color: 0xff0000, size: 0.1 });
+    const pointsGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const pointsMesh = new THREE.Points(pointsGeometry, pointsMaterial);
+    scene.add(pointsMesh);
+
+    // Create a line material
+    const linesMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+    const linesGeometry = new THREE.BufferGeometry().setFromPoints(lineVertices);
+    const linesMesh = new THREE.LineSegments(linesGeometry, linesMaterial);
+    scene.add(linesMesh);
+
+    camera.position.z = 45;
+    camera.position.y = 30;
+    camera.rotation.x = -Math.PI / 6;
+
+    // Step 4: Render the Scene
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
 }); 
+
